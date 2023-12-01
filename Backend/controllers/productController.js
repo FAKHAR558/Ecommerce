@@ -1,31 +1,37 @@
 const Product = require("../Models/productModel");
-
+const ErrorHandler = require("../Utils/errorHandler");
+const ApiFeatures = require("../Utils/apifeatures");
+const AsyncErrorHandler = require("../Middleware/catchAsyncError");
 //Post APi
-exports.createProduct = async (req, res, next) => {
+exports.createProduct = AsyncErrorHandler(async (req, res, next) => {
   const product = await Product.create(req.body);
   res.status(201).json({
     success: true,
     product,
   });
-};
+});
 
 //Get Api
-exports.getAllProducts = async (req, res) => {
-  const product = await Product.find();
+exports.getAllProducts = AsyncErrorHandler(async (req, res) => {
+  const resultperpage = 5;
+  const productCount = await Product.countDocuments();
+  const apiFeatures = new ApiFeatures(Product.find(), req.query)
+    .search()
+    .filter()
+    .pagination(resultperpage);
+  const product = await apiFeatures.query;
   res.status(200).json({
     success: true,
     product,
+    productCount,
   });
-};
+});
 
 //Put API
-exports.upDateProduct = async (req, res) => {
+exports.upDateProduct = AsyncErrorHandler(async (req, res, next) => {
   let product = await Product.findById(req.params.id);
   if (!product) {
-    return res.status(500).json({
-      success: false,
-      message: "Product is Nt=ot Found",
-    });
+    return next(new ErrorHandler("Product Not Found ", 404));
   }
   product = await Product.findByIdAndUpdate(req.params.id, req.body, {
     new: true,
@@ -36,16 +42,14 @@ exports.upDateProduct = async (req, res) => {
     success: true,
     product,
   });
-};
+});
 
 //Delete Api
-exports.deleteProduct = async (req, res, next) => {
+exports.deleteProduct = AsyncErrorHandler(async (req, res, next) => {
   const product = await Product.findById(req.params.id);
+
   if (!product) {
-    return res.status(500).json({
-      success: false,
-      message: "Product selected for Deletion is Not Found",
-    });
+    return next(new ErrorHandler("Product Not Found ", 404));
   }
   await product.deleteOne();
   res.status(200).json({
@@ -53,4 +57,4 @@ exports.deleteProduct = async (req, res, next) => {
     message: "Product is deleted Successfully",
     product,
   });
-};
+});
